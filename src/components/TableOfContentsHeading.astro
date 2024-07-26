@@ -1,0 +1,21 @@
+---
+import type { Heading } from './TableOfContents.astro'
+import Link from './Link.astro'
+
+const { heading } = Astro.props
+---
+
+<li class="tree-child">
+	<Link href={'#' + heading.slug} underline>
+		{heading.text}
+	</Link>
+	{
+		heading.subheadings.length > 0 && (
+			<ul>
+				{heading.subheadings.map((subheading: Heading) => (
+					<Astro.self heading={subheading} />
+				))}
+			</ul>
+		)
+	}
+</li>

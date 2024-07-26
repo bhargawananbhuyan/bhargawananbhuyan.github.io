@@ -1,0 +1,359 @@
+---
+title: Authentication in NextJS using AuthJS.
+date: 2024-06-25
+description: Step-by-step implementation of authentication in a NextJS v14 application using AuthJS.
+draft: true
+---
+
+Implementation of authentication for a NextJS application is pretty straightforward. One can go through the documentation of AuthJS for NextJS and set it up in a matter of seconds. However, when I implemented it, I faced several hiccups for implementing various functionalities.
+
+Problems I faced --
+
+- Role-based authentication setup.
+- Addition of additional properties to the User object of AuthJS.
+- Database persistence for users authenticated using OAuth (Google in my case).
+- Redirection after logging in.
+- AuthJS error handling.
+
+I had used PrismaJS as an ORM for a MySQL database. The `User` model looks like --
+
+```prisma
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String?
+  role      Role     @default(consumer)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+enum Role {
+  admin
+  consumer
+}
+```
+
+Just like the documentation of AuthJS says about the setup of authentication, I set it up as it is. The initial setup (taken from AuthJS documentation) looks like --
+
+- Install the package
+
+```sh
+bun add next-auth@beta
+```
+
+- Add `AUTH_SECRET` to `.env` file using --
+
+```sh
+bunx auth secret
+```
+
+- Create `auth.ts` in root and add the code --
+
+```ts
+import NextAuth from 'next-auth'
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+	providers: []
+})
+```
+
+- Export the `GET` and `POST` handlers from `./app/api/auth/[...nextauth]/route.ts` as --
+
+```ts
+import { handlers } from '@/auth' // Referring to the auth.ts we just created
+export const { GET, POST } = handlers
+```
+
+- Create `middleware.ts` in root and add the code --
+
+```ts
+export { auth as middleware } from '@/auth'
+```
+
+The registration form looks like --
+
+```ts
+'use client'
+
+import { useFormState } from 'react-dom'
+import { register } from './actions'
+
+export default function Form() {
+	const [state, action] = useFormState(register, undefined)
+
+	return (
+		<form action={action} className="form">
+			<div className="form-field">
+				<label htmlFor="name">Name</label>
+				<input type="text" name="name" id="name" />
+				{state?.errors?.name && <small>{state?.errors?.name}</small>}
+			</div>
+			<div className="form-field">
+				<label htmlFor="email">Email</label>
+				<input type="email" name="email" id="email" />
+				{state?.errors?.email && <small>{state?.errors?.email}</small>}
+			</div>
+			<div className="form-field">
+				<label htmlFor="password">Password</label>
+				<input type="password" name="password" id="password" />
+				{state?.errors?.password && <small>{state?.errors?.password}</small>}
+			</div>
+
+			<button type="submit" className="form-submit">
+				Register
+			</button>
+		</form>
+	)
+}
+```
+
+And the form action looks like --
+
+```ts
+'use server'
+
+import { signIn } from '@/auth'
+import db from '@/lib/db'
+import { genSalt, hash } from 'bcryptjs'
+import { z } from 'zod'
+
+const registerSchema = z.object({
+	name: z.string().min(2, 'Name must be at least 2 characters'),
+	email: z.string().email('Invalid email address'),
+	password: z.string().min(8, 'Password must be at least 8 characters')
+})
+
+export async function register(_currentState: unknown, formData: FormData) {
+	// validate the form data
+	const validationResult = registerSchema.safeParse({
+		name: formData.get('name'),
+		email: formData.get('email'),
+		password: formData.get('password')
+	})
+
+	// if the validation fails, return the errors
+	if (!validationResult.success) {
+		return {
+			errors: validationResult.error.flatten().fieldErrors
+		}
+	}
+
+	const { name, email, password } = validationResult.data
+
+	// check if the user exists
+	const user = await db.user.findUnique({
+		where: { email: validationResult.data.email }
+	})
+	if (user)
+		return {
+			errors: { email: 'Email already registered', name: '', password: '' }
+		}
+
+	// hash password
+	const hashedPassword = await hash(password, await genSalt(10))
+
+	// create new user and sign in
+	const newUser = await db.user.create({
+		data: { name, email, password: hashedPassword }
+	})
+	await signIn('credentials', { email: newUser.email, redirectTo: '/' })
+}
+```
+
+After `signIn` function is called, we can't use `redirect('/')` of `next/navigation` to redirect after authentication. It won't redirect this way. The redirect logic needs to be mentioned in the `redirectTo` property of the `signIn` function itself.
+
+For role based authentication, we have mentioned a default role of `consumer` in the Prisma model. However, we also have a `.env` key named `AUTH_ADMIN_EMAIL` which corresponds to a particular GMail address. As we implement the Google authentication logic, when the user with `AUTH_ADMIN_EMAIL` sign in, the role of `admin` is automatically attached to the user. This can be clearly understood from the code --
+
+```ts
+import { Role } from '@prisma/client'
+import NextAuth, { DefaultSession } from 'next-auth'
+import Credentials from 'next-auth/providers/credentials'
+import Google from 'next-auth/providers/google'
+import db from './lib/db'
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+	providers: [
+		Credentials({
+			credentials: {
+				email: {},
+				password: {}
+			},
+			// @ts-ignore
+			authorize: async (credentials: { email: string }) => {
+				const user = await db.user.findUnique({
+					where: { email: credentials.email }
+				})
+				return user
+			}
+		}),
+		Google
+	],
+	callbacks: {
+		async signIn({ account, profile, user: googleUser }) {
+			if (account?.provider === 'google') {
+				// check if the user is in database
+				const user = await db.user.findUnique({
+					where: { email: profile?.email! }
+				})
+
+				if (!user) {
+					// add the google user in the db
+					const newUser = await db.user.create({
+						data: {
+							email: profile?.email!,
+							name: profile?.name!,
+							role:
+								profile?.email === process.env.AUTH_ADMIN_EMAIL
+									? 'admin'
+									: 'consumer'
+						}
+					})
+
+					// @ts-ignore
+					googleUser.role = newUser?.role
+					googleUser.id = newUser?.id
+					return true
+				}
+
+				// @ts-ignore
+				googleUser.role = user?.role
+			}
+
+			return true
+		},
+		jwt({ token, user }) {
+			if (user) {
+				// @ts-ignore
+				token.role = user.role
+				token.id = user.id
+			}
+			return token
+		},
+		session({ session, token }) {
+			if (token) {
+				session.user.role = token.role as Role
+				session.user.id = token.id as string
+			}
+			return session
+		}
+	},
+	pages: {
+		signIn: '/login'
+	}
+})
+
+declare module 'next-auth' {
+	interface Session {
+		user: {
+			role: Role
+		} & DefaultSession['user']
+	}
+}
+```
+
+As can be seen from the above code, the properties like `id` and `role` are not attached to the AuthJS `User` object directly. We need to attach them declaratively in the `callbacks` property. There are some `@ts/ignore` used in the code. I have no idea what the relevant TypeScript hack is! Also, it's important to note that we can't call `PrismaClient` in `jwt` and `session` functions as it threw errors while I was developing the application. Furthermore, the Google authentication logic adds a user to the database if it doesn't exist in the database, after logging in. The properties `id` and `role` are also attached to the `User` as shown.
+For Google authentication to work, make sure to add the keys `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` to the `.env` file.
+
+As done for the register form, the login form code looks like --
+
+```ts
+'use client'
+
+import { useFormState } from 'react-dom'
+import { login } from './actions'
+
+export default function Form() {
+	const [state, action] = useFormState(login, undefined)
+
+	return (
+		<form action={action} className="form">
+			<div className="form-field">
+				<label htmlFor="email">Email</label>
+				<input type="email" name="email" id="email" />
+				{state?.errors?.email && <small>{state?.errors?.email}</small>}
+			</div>
+			<div className="form-field">
+				<label htmlFor="password">Password</label>
+				<input type="password" name="password" id="password" />
+				{state?.errors?.password && <small>{state?.errors?.password}</small>}
+			</div>
+			<button type="submit" className="form-submit">
+				Login
+			</button>
+		</form>
+	)
+}
+```
+
+And the form action looks like --
+
+```ts
+'use server'
+
+import { signIn } from '@/auth'
+import db from '@/lib/db'
+import { compare } from 'bcryptjs'
+import { z } from 'zod'
+
+const loginSchema = z.object({
+	email: z.string().email('Invalid email address'),
+	password: z.string().min(8, 'Password must be at least 8 characters')
+})
+
+export async function login(_currentState: unknown, formData: FormData) {
+	// validate the form data
+	const validationResult = loginSchema.safeParse({
+		email: formData.get('email'),
+		password: formData.get('password')
+	})
+
+	// if the validation fails, return the errors
+	if (!validationResult.success) {
+		return {
+			errors: validationResult.error.flatten().fieldErrors
+		}
+	}
+
+	const { email, password } = validationResult.data
+
+	// check if the user exists
+	let user = await db.user.findUnique({
+		where: { email: validationResult.data.email }
+	})
+	if (!user)
+		return { errors: { email: 'User not registered', name: '', password: '' } }
+
+	// check if the password is correct
+
+	const validPassword = await compare(password, user?.password ?? '')
+	if (!validPassword)
+		return { errors: { email: '', name: '', password: 'Incorrect password' } }
+
+	// sign in and redirect to home
+	await signIn('credentials', { email, redirectTo: '/' })
+}
+```
+For proper functioning of the middleware, `middleware.ts` should be updated as --
+
+```ts
+import { auth } from '@/auth'
+
+export default auth((req) => {
+	if (!req.auth && req.nextUrl.pathname === '/protected') {
+		const redirectURL = new URL('/login', req.nextUrl.origin)
+		return Response.redirect(redirectURL)
+	}
+
+	if (req.auth && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/register')) {
+		const redirectURL = new URL('/', req.nextUrl.origin)
+		return Response.redirect(redirectURL)
+	}
+})
+```
+
+I'm still working on the error handling of AuthJS. Once that's done, it'll be updated here.
+
+The code for the project can be found [here](https://github.com/bhargawananbhuyan/ecommerce-demo.git)

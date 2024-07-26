@@ -1,0 +1,16 @@
+.wrapper {
+	@apply flex h-10 w-full max-w-sm gap-x-1 overflow-x-auto
+		rounded-lg border border-black/15 p-1.5 transition-all focus-within:ring-2 
+    focus-within:ring-offset-2 focus-within:ring-offset-white dark:border-white/20
+    dark:focus-within:ring-offset-black [&::-webkit-scrollbar]:hidden;
+}
+.words {
+	@apply inline-flex gap-x-1;
+}
+.words span,
+.words button {
+	@apply whitespace-nowrap rounded border border-black/15 bg-gray-100 px-1 py-0.5 text-sm dark:border-white/20 dark:bg-black/75;
+}
+input {
+	@apply mx-0.5 flex-grow bg-transparent outline-none focus:outline-none;
+}

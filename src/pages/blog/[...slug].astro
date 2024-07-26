@@ -1,0 +1,89 @@
+---
+import BackToPrevious from '@components/BackToPrevious.astro'
+import Container from '@components/Container.astro'
+import FormattedDate from '@components/FormattedDate.astro'
+import Link from '@components/Link.astro'
+import PostNavigation from '@components/PostNavigation.astro'
+import TableOfContents from '@components/TableOfContents.astro'
+import Layout from '@layouts/Layout.astro'
+import { readingTime } from '@lib/utils'
+import { type CollectionEntry, getCollection } from 'astro:content'
+
+export const prerender = true
+
+export async function getStaticPaths() {
+	const posts = (await getCollection('blog'))
+		.filter((post) => !post.data.draft)
+		.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	return posts.map((post) => ({
+		params: { slug: post.slug },
+		props: post
+	}))
+}
+type Props = CollectionEntry<'blog'>
+
+const posts = (await getCollection('blog'))
+	.filter((post) => !post.data.draft)
+	.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+
+function getNextPost() {
+	let postIndex
+	for (const post of posts) {
+		if (post.slug === Astro.params.slug) {
+			postIndex = posts.indexOf(post)
+			return posts[postIndex + 1]
+		}
+	}
+}
+
+function getPrevPost() {
+	let postIndex
+	for (const post of posts) {
+		if (post.slug === Astro.params.slug) {
+			postIndex = posts.indexOf(post)
+			return posts[postIndex - 1]
+		}
+	}
+}
+
+const nextPost = getNextPost()
+const prevPost = getPrevPost()
+
+const post = Astro.props
+const { Content, headings } = await post.render()
+---
+
+<Layout title={post.data.title} description={post.data.description}>
+	<Container>
+		<div>
+			<BackToPrevious href="/blog">Back to blog</BackToPrevious>
+		</div>
+		<div data-pagefind-body>
+			<div class="my-10 space-y-1">
+				<div class="flex items-center gap-1.5">
+					<div class="font-base text-sm">
+						<FormattedDate date={post.data.date} />
+					</div>
+					&bull;
+					<div class="font-base text-sm">
+						{readingTime(post.body)}
+					</div>
+				</div>
+				<h1 class="text-3xl font-semibold text-black dark:text-white">
+					{post.data.title}
+				</h1>
+			</div>
+			{headings.length > 0 && <TableOfContents headings={headings} />}
+			<article class="space-y-6 [&>ul>li]:font-serif">
+				<Content />
+				<p>
+					&mdash; <Link href="https://x.com/bhargawanan_b" external>@bhargawanan_b</Link>
+				</p>
+				<br />
+				<div data-pagefind-ignore>
+					<PostNavigation prevPost={prevPost} nextPost={nextPost} />
+				</div>
+			</article>
+		</div>
+	</Container>
+</Layout>

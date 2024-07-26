@@ -1,0 +1,288 @@
+---
+title: 'Case Study: Tags input of Apple Reminders app'
+date: 2024-07-19
+description: A case study of the tags input of Apple Reminders app and its implementation in Svelte.
+draft: false
+---
+
+import { Image } from 'astro:assets'
+import bannerImg from './banner.webp'
+import HandleInput from './HandleInput.svelte'
+import HandleInput2 from './HandleInput2.svelte'
+import HandleKeyDown from './HandleKeyDown.svelte'
+import HandleBlur from './HandleBlur.svelte'
+import HandlePop from './HandlePop.svelte'
+
+<figure>
+	<Image src={bannerImg} alt={frontmatter.title} />
+	<figcaption>Screenshot of **Apple Reminders** application</figcaption>
+</figure>
+
+The tags input in Apple Reminders app looks so simple in the first glance. But as I dug into the functionalities, I could see that it has some interesting features --
+
+- If we type a tag and enter a space, a tag name is made prefixed by a `#` sign
+- If we type <kbd>Backspace</kbd>, the tag is removed
+- If we enter the same tag again, only the existing tag is shown
+
+So, I thought of implementing the same in Svelte.
+
+## Handling the input
+
+```svelte
+<script lang="ts">
+	import type { FormEventHandler } from 'svelte/elements'
+
+	let input = ''
+	let words: string[] = []
+
+	const handleInput: FormEventHandler<HTMLInputElement> = (e) => {
+		const value = e.currentTarget.value
+		if (value.endsWith(' ') && input.trim().length > 0) {
+			words = [...words, input.trim()]
+			input = ''
+		} else input = value
+	}
+</script>
+
+<span>
+	{#if words.length > 0}
+		<span>
+			{#each words as word}
+				<span>#{word}</span>
+			{/each}
+		</span>
+	{/if}
+	<input type="text" placeholder="Tags" bind:value={input} on:input={handleInput} />
+</span>
+```
+
+Output --
+
+<div>
+	<HandleInput client:visible />
+</div>
+
+Now, if we try to add a tag, it works as expected. But if we enter the same tag, it is added again, which is not the expected behavior. This can be fixed as follows --
+
+```svelte ins={6,19,22} del={18,21}
+<script lang="ts">
+	import type { FormEventHandler } from 'svelte/elements'
+
+	let input = ''
+	let words: string[] = []
+	$: uniqueWords = [...new Set(words)]
+
+	const handleInput: FormEventHandler<HTMLInputElement> = (e) => {
+		const value = e.currentTarget.value
+		if (value.endsWith(' ') && input.trim().length > 0) {
+			words = [...words, input.trim()]
+			input = ''
+		} else input = value
+	}
+</script>
+
+<span>
+	{#if words.length > 0}
+	{#if uniqueWords.length > 0}
+		<span class="words">
+			{#each words as word}
+			{#each uniqueWords as word}
+				<span>#{word}</span>
+			{/each}
+		</span>
+	{/if}
+	<input type="text" placeholder="Tags" bind:value={input} on:input={handleInput} />
+</span>
+```
+
+Output --
+
+<div>
+	<HandleInput2 client:visible />
+</div>
+
+## Handling `Backspace`
+
+Next, we need to handle the event on entering the <kbd>Backspace</kbd> key. This can be done as follows --
+
+```svelte ins={4,20-23,39}
+<script lang="ts">
+	import type {
+		FormEventHandler,
+		KeyboardEventHandler
+	} from 'svelte/elements'
+
+	let input = ''
+	let words: string[] = []
+	let uniqueWords: string[] = []
+	$: uniqueWords = [...new Set(words)]
+
+	const handleInput: FormEventHandler<HTMLInputElement> = (e) => {
+		const value = e.currentTarget.value
+		if (value.endsWith(' ') && input.trim().length > 0) {
+			words = [...words, input.trim()]
+			input = ''
+		} else input = value
+	}
+
+	const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = (e) => {
+		if (e.key === 'Backspace' && input.trim().length === 0 && words.length > 0)
+			words = words.slice(0, -1)
+	}
+</script>
+
+<span>
+	{#if uniqueWords.length > 0}
+		<span>
+			{#each uniqueWords as word}
+				<span>#{word}</span>
+			{/each}
+		</span>
+	{/if}
+	<input
+		type="text"
+		placeholder="Tags"
+		bind:value={input}
+		on:input={handleInput}
+		on:keydown={handleKeyDown}
+	/>
+</span>
+```
+
+Output --
+
+<div>
+	<HandleKeyDown client:visible />
+</div>
+
+## Handling `blur` event
+
+Next, say we have entered a tag and clicked outside the input field. The tag should be added. This can be done as follows --
+
+```svelte ins={5,26-31,48}
+<script lang="ts">
+	import type {
+		FormEventHandler,
+		KeyboardEventHandler,
+		FocusEventHandler
+	} from 'svelte/elements'
+
+	let input = ''
+	let words: string[] = []
+	let uniqueWords: string[] = []
+	$: uniqueWords = [...new Set(words)]
+
+	const handleInput: FormEventHandler<HTMLInputElement> = (e) => {
+		const value = e.currentTarget.value
+		if (value.endsWith(' ') && input.trim().length > 0) {
+			words = [...words, input.trim()]
+			input = ''
+		} else input = value
+	}
+
+	const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = (e) => {
+		if (e.key === 'Backspace' && input.trim().length === 0 && words.length > 0)
+			words = words.slice(0, -1)
+	}
+
+	const handleBlur: FocusEventHandler<HTMLInputElement> = () => {
+		if (input.trim().length > 0) {
+			words = [...words, input.trim()]
+			input = ''
+		}
+	}
+</script>
+
+<span>
+	{#if uniqueWords.length > 0}
+		<span>
+			{#each uniqueWords as word}
+				<span>#{word}</span>
+			{/each}
+		</span>
+	{/if}
+	<input
+		type="text"
+		placeholder="Tags"
+		bind:value={input}
+		on:input={handleInput}
+		on:keydown={handleKeyDown}
+		on:blur={handleBlur}
+	/>
+</span>
+```
+
+Output --
+
+<div>
+	<HandleBlur client:visible />
+</div>
+
+## Addition: Removing a tag on clicking it
+
+```svelte ins={6,34-36,44} del={43}
+<script lang="ts">
+	import type {
+		FormEventHandler,
+		KeyboardEventHandler,
+		FocusEventHandler,
+		MouseEventHandler
+	} from 'svelte/elements'
+
+	let input = ''
+	let words: string[] = []
+	let uniqueWords: string[] = []
+	$: uniqueWords = [...new Set(words)]
+
+	const handleInput: FormEventHandler<HTMLInputElement> = (e) => {
+		const value = e.currentTarget.value
+		if (value.endsWith(' ') && input.trim().length > 0) {
+			words = [...words, input.trim()]
+			input = ''
+		} else input = value
+	}
+
+	const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = (e) => {
+		if (e.key === 'Backspace' && input.trim().length === 0 && words.length > 0)
+			words = words.slice(0, -1)
+	}
+
+	const handleBlur: FocusEventHandler<HTMLInputElement> = () => {
+		if (input.trim().length > 0) {
+			words = [...words, input.trim()]
+			input = ''
+		}
+	}
+
+	const handlePop: MouseEventHandler<HTMLButtonElement> = (e) => {
+		words = words.filter((word) => word !== e.currentTarget.textContent?.replace('#', ''))
+	}
+</script>
+
+<span>
+	{#if uniqueWords.length > 0}
+		<span>
+			{#each uniqueWords as word}
+				<span>#{word}</span>
+				<button on:click={handlePop}>#{word}</button>
+			{/each}
+		</span>
+	{/if}
+	<input
+		type="text"
+		placeholder="Tags"
+		bind:value={input}
+		on:input={handleInput}
+		on:keydown={handleKeyDown}
+		on:blur={handleBlur}
+	/>
+</span>
+```
+
+Output --
+
+<div>
+	<HandlePop client:visible />
+</div>
+
+I found it very interesting about how such a small feature can have so many things going on under the hood. Hope you like it too.

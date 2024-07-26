@@ -1,0 +1,23 @@
+---
+import type { CollectionEntry } from 'astro:content'
+
+type Props = {
+	entry: CollectionEntry<'blog'> | CollectionEntry<'projects'>
+}
+
+const { entry } = Astro.props as {
+	entry: CollectionEntry<'blog'> | CollectionEntry<'projects'>
+}
+---
+
+<a
+	href={`/${entry.collection}/${entry.slug}`}
+	class="group prose block py-5 text-black dark:text-white"
+>
+	<div class="font-semibold group-hover:underline">
+		{entry.data.title}
+	</div>
+	<p class="font-sans leading-relaxed opacity-75">
+		{entry.data.description}
+	</p>
+</a>

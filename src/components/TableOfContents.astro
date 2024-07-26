@@ -1,0 +1,36 @@
+---
+import TableOfContentsHeading from './TableOfContentsHeading.astro'
+
+const { headings } = Astro.props
+const toc = buildToc(headings)
+
+export interface Heading {
+	depth: number
+	slug: string
+	text: string
+}
+
+function buildToc(headings: Heading[]) {
+	const toc: Heading[] = []
+	const parentHeadings = new Map()
+	headings.forEach((h) => {
+		const heading = { ...h, subheadings: [] }
+		parentHeadings.set(heading.depth, heading)
+		if (heading.depth === 2) {
+			toc.push(heading)
+		} else {
+			parentHeadings.get(heading.depth - 1)?.subheadings?.push(heading)
+		}
+	})
+	return toc
+}
+---
+
+<div>
+	<div class="text-lg font-semibold">Table of Contents</div>
+	<nav>
+		<ul class="tree">
+			{toc.map((heading) => <TableOfContentsHeading heading={heading} />)}
+		</ul>
+	</nav>
+</div>

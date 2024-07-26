@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+	overflow-y: auto;
+	color-scheme: light;
+	scroll-padding-top: 100px;
+	@apply scroll-smooth;
+}
+
+html.dark {
+	color-scheme: dark;
+}
+
+html,
+body {
+	@apply size-full;
+}
+
+body {
+	@apply font-sans antialiased;
+	@apply flex flex-col;
+	@apply bg-neutral-100 dark:bg-neutral-900;
+	@apply text-black/75 dark:text-white/75;
+}
+
+header {
+	@apply fixed left-0 right-0 top-0 z-50 py-4 sm:py-6;
+	@apply bg-neutral-100/75 dark:bg-neutral-900/75;
+	@apply saturate-200 backdrop-blur-sm;
+}
+
+main {
+	@apply flex-1 pb-16 pt-32;
+}
+
+footer {
+	@apply py-6;
+}
+
+article {
+	@apply prose prose-neutral max-w-full dark:prose-invert prose-img:mx-auto prose-img:my-auto;
+	@apply prose-headings:font-semibold;
+	@apply prose-headings:text-black prose-headings:dark:text-white;
+}
+
+@layer utilities {
+	article a {
+		@apply font-sans text-current underline underline-offset-[3px];
+		@apply decoration-black/30 dark:decoration-white/30;
+		@apply transition-colors duration-300 ease-in-out;
+	}
+	article a:hover {
+		@apply text-black dark:text-white;
+		@apply decoration-black/50 dark:decoration-white/50;
+	}
+}
+
+p {
+	@apply font-serif;
+}
+
+kbd {
+	@apply font-mono;
+}
+
+figure figcaption {
+	@apply text-center;
+}
+
+code:not(pre code) {
+	@apply break-words;
+}
+
+.tree {
+	@apply leading-8;
+}
+
+.tree-child {
+	@apply relative ml-8;
+}
+
+.tree-child:last-child::after {
+	@apply hidden;
+}
+
+.tree-child::before {
+	@apply absolute -left-4 h-4 w-2.5 border-b border-l border-gray-400 content-[''];
+}
+
+.tree-child::after {
+	@apply absolute -left-4 top-0 h-full border-l border-gray-400 content-[''];
+}
+
+#mermaid-0 {
+	@apply dark:invert;
+}

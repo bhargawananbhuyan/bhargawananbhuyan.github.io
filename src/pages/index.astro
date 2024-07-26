@@ -1,0 +1,140 @@
+---
+import ArrowCard from '@components/ArrowCard.astro'
+import Container from '@components/Container.astro'
+import Link from '@components/Link.astro'
+import { HOME, SITE, SOCIALS } from '@consts'
+import Layout from '@layouts/Layout.astro'
+import type { CollectionEntry } from 'astro:content'
+import { getCollection } from 'astro:content'
+
+export const prerender = true
+
+const blog: CollectionEntry<'blog'>[] = (await getCollection('blog'))
+	.filter((post) => !post.data.draft)
+	.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+	.slice(0, SITE.NUM_POSTS_ON_HOMEPAGE)
+---
+
+<Layout title={HOME.TITLE} description={HOME.DESCRIPTION}>
+	<Container>
+		<aside>
+			<section class="leading-relaxed">
+				<h1 class="font-semibold text-black dark:text-white">Bhargawanan Bhuyan</h1>
+				<div>Full-stack Developer</div>
+			</section>
+			<div class="space-y-16">
+				<section>
+					<article class="space-y-4">
+						<span>
+							<p>
+								I am a freelance full-stack developer based in Assam, India. I specialize in
+								developing software applications and services for the web, mobile and cloud. I love
+								to tinker around with new software and hardware technologies. Besides programming, I
+								love to travel, read and sing.
+							</p>
+						</span>
+					</article>
+				</section>
+
+				<section class="space-y-6">
+					<h2 class="font-semibold text-black dark:text-white">Experience</h2>
+					<ul class="flex flex-col space-y-4">
+						<li>
+							<section class="leading-relaxed">
+								<div class="font-semibold">Mealth</div>
+								<div class="opacity-75">Software Developer</div>
+								<div class="opacity-75">Nov 2022 &mdash; Aug 2023</div>
+							</section>
+							<article class="last-of-type:[&>p]:mb-0">
+								<p>
+									I developed several frontend parts and backend services of their website using
+									Laravel PHP, managed complete deployment including CI/CD pipeline implementation
+									using AWS CodePipeline & CodeDeploy, server hosting in AWS EC2, database hosting
+									in AWS RDS, and static file uploads using AWS S3. Also, I created their blog using
+									Svelte-kit and SanityCMS.
+								</p>
+							</article>
+						</li>
+					</ul>
+				</section>
+
+				<section class="space-y-6">
+					<h2 class="font-semibold text-black dark:text-white">Education</h2>
+					<ul class="flex flex-col space-y-4">
+						<li>
+							<section class="leading-relaxed">
+								<div class="font-semibold">University of Delhi, New Delhi</div>
+								<div class="opacity-75">Master of Technology in Microwave Electronics</div>
+								<div class="opacity-75">2023 &mdash; 2025</div>
+							</section>
+						</li>
+						<li>
+							<section class="leading-relaxed">
+								<div class="font-semibold">Assam Engineering College, Guwahati</div>
+								<div class="opacity-75">Bachelor of Technology in Instrumentation Engineering</div>
+								<div class="opacity-75">2018 &mdash; 2022</div>
+							</section>
+						</li>
+						<li>
+							<section class="leading-relaxed">
+								<div class="font-semibold">Cotton University, Guwahati</div>
+								<div class="opacity-75">Higher Secondary</div>
+								<div class="opacity-75">2016 &mdash; 2018</div>
+							</section>
+						</li>
+					</ul>
+				</section>
+
+				<section class="space-y-6">
+					<div class="flex flex-wrap items-center justify-between gap-y-2">
+						<h2 class="font-semibold text-black dark:text-white">Latest blogs</h2>
+						<Link href="/blog"> See all blogs </Link>
+					</div>
+					<ul class="not-prose">
+						{
+							blog.map((post) => (
+								<li class="border-b border-black/15 last-of-type:border-none dark:border-white/20">
+									<ArrowCard entry={post} />
+								</li>
+							))
+						}
+					</ul>
+				</section>
+
+				<section class="space-y-4">
+					<h2 class="font-semibold text-black dark:text-white">Let's Connect</h2>
+					<article>
+						<p>
+							I am open to work, collaborate or ideate in new and existing projects. Feel free to
+							reach me out at —
+						</p>
+					</article>
+					<div class="mt-4 grid auto-cols-min grid-cols-4 gap-y-2">
+						<div class="col-span-1 flex items-center gap-1">
+							<span class="truncate whitespace-nowrap">Email</span>
+						</div>
+						<div class="col-span-3 truncate">
+							<Link href="mailto:markhorn.dev@gmail.com" external>
+								{SITE.EMAIL}
+							</Link>
+						</div>
+						{
+							SOCIALS.map((social) => (
+								<>
+									<div class="col-span-1 flex items-center gap-1">
+										<span class="truncate whitespace-nowrap">{social.NAME}</span>
+									</div>
+									<div class="col-span-3 truncate">
+										<Link href={social.HREF} external>
+											{social.HREF.replace('https://', '')}
+										</Link>
+									</div>
+								</>
+							))
+						}
+					</div>
+				</section>
+			</div>
+		</aside>
+	</Container>
+</Layout>

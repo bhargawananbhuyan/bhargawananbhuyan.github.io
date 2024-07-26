@@ -1,0 +1,66 @@
+---
+import BackToPrevious from '@components/BackToPrevious.astro'
+import Container from '@components/Container.astro'
+import FormattedDate from '@components/FormattedDate.astro'
+import Link from '@components/Link.astro'
+import Layout from '@layouts/Layout.astro'
+---
+
+<Layout
+	title="References"
+	description="Tooling used in development of this site, reference sites, etc."
+>
+	<Container>
+		<div>
+			<BackToPrevious href="/">Back to home</BackToPrevious>
+		</div>
+		<div>
+			<div class="my-10 space-y-1">
+				<div class="flex items-center gap-1.5">
+					<div class="font-base text-sm">
+						Last updated &mdash; <FormattedDate date={new Date('2024-07-21')} } />
+					</div>
+				</div>
+				<h1 class="text-3xl font-semibold text-black dark:text-white">Credits</h1>
+			</div>
+			<article class="space-y-6 [&>section>ul>li]:font-serif">
+				<section>
+					<h2>Tooling</h2>
+					<ul>
+						<li>
+							<Link href="https://astro.build/" external>Astro</Link>
+							&mdash; Framework for this site
+						</li>
+						<li>
+							<Link href="https://svelte.dev/" external>Svelte</Link>
+							&mdash; for creating reactive components
+						</li>
+						<li>
+							<Link href="https://tailwindcss.com/" external>TailwindCSS</Link>
+							&mdash; for styling
+						</li>
+						<li>
+							<Link href="https://expressive-code.com/" external>Expressive Code</Link>
+							&mdash; for code block highlighting
+						</li>
+						<li>
+							<Link href="https://cloudflare.com/" external>Cloudflare</Link>
+							&mdash; for hosting
+						</li>
+					</ul>
+				</section>
+				<section>
+					<h2>Reference websites</h2>
+					<ul>
+						<li>
+							<Link href="https://markhorn.dev" external>markhorn.dev</Link>
+						</li>
+						<li>
+							<Link href="https://astro-micro.vercel.app" external>astro-micro.vercel.app</Link>
+						</li>
+					</ul>
+				</section>
+			</article>
+		</div>
+	</Container>
+</Layout>
