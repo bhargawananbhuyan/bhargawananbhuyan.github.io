@@ -13,7 +13,7 @@ import rehypeMermaid from 'rehype-mermaid'
 // https://astro.build/config
 export default defineConfig({
 	site: "https://bhargawananbhuyan.github.io",
-	output: 'hybrid',
+	output: 'static',
 	markdown: {
 		rehypePlugins: [
 			[
